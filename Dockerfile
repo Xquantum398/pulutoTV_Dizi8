@@ -1,7 +1,9 @@
+# Dockerfile per HuggingFace Spaces - TVProxy con Gunicorn
+
 # 1. Usa l'immagine base ufficiale di Python 3.12 slim
 FROM python:3.12-slim
 
-# 2. Installa git e certificati SSL
+# 2. Installa git e certificati SSL (per clonare da GitHub e HTTPS)
 RUN apt-get update && apt-get install -y \
     git \
     ca-certificates \
@@ -11,17 +13,29 @@ RUN apt-get update && apt-get install -y \
 # 3. Imposta la directory di lavoro
 WORKDIR /app
 
-# 4. GitHub deposunu doğrudan çalışma dizinine klonla
+# 4. Clona il repository da GitHub
 RUN git clone https://github.com/Xquantum398/pulutoTV_Dizi8.git .
 
-# 5. Aggiorna pip e installa le dipendenze (gevent dahil edildi)
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir gevent
+# 5. Aggiorna pip e installa le dipendenze senza cache
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 6. Espone la porta 7860 per Gunicorn (HuggingFace Spaces)
+# 6. Espone la porta 7860 per HuggingFace Spaces
 EXPOSE 7860
 
 # 7. Comando per avviare Gunicorn ottimizzato per HuggingFace Spaces
-# Hata riskini azaltmak için CMD tek satırda düzeltildi
-CMD ["gunicorn", "app:app", "-w", "2", "--worker-class", "gevent", "-b", "0.0.0.0:7860", "--timeout", "90", "--keep-alive", "5", "--log-level", "info"]
+#    - 2 worker (limite per Spaces gratuiti)
+#    - Worker class sync (più stabile per proxy HTTP)
+#    - Timeout adeguati per streaming
+#    - Logging su stdout/stderr
+CMD ["gunicorn", "app:app", \
+     "-w", "2", \
+     "--worker-class", "sync", \
+     "-b", "0.0.0.0:7860", \
+     "--timeout", "120", \
+     "--keep-alive", "5", \
+     "--max-requests", "500", \
+     "--max-requests-jitter", "50", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info"]
