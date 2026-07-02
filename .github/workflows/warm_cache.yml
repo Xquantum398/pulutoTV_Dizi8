@@ -1,0 +1,25 @@
+name: Vavoo Önbellek Isıtıcı
+
+on:
+  schedule:
+    # Her 4 saatte bir çalışır.
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    # Manuel olarak çalıştırabilmek için
+
+jobs:
+  warm-up-the-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Proje dosyalarını indir
+        uses: actions/checkout@v4
+      - name: Python 3.10'u kur
+        uses: actions/setup-python@v5
+        with:
+        python-version: '3.10'
+      - name: 'requests' kütüphanesini kur
+        run: pip install requests
+      - name: Önbellek ısıtma scriptini çalıştır
+        env:
+        MY_APP_URL: ${{ secrets.HF_APP_URL }}
+        run: python warm_cache.py
