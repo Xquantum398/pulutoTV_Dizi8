@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # 4. GitHub deposunu doğrudan çalışma dizinine klonla
-RUN git clone https://github.com/Xquantum398/pigi.git .
+RUN git clone https://github.com/Xquantum398/pulutoTV_Dizi8.git .
 
 # 5. Aggiorna pip e installa le dipendenze (gevent dahil edildi)
 RUN pip install --upgrade pip && \
