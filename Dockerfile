@@ -1,41 +1,28 @@
-# Dockerfile per HuggingFace Spaces - TVProxy con Gunicorn
+# Fase 1: Build
+# Usa un'immagine Python ufficiale e leggera come base.
+FROM python:3.11-slim
 
-# 1. Usa l'immagine base ufficiale di Python 3.12 slim
-FROM python:3.12-slim
-
-# 2. Installa git e certificati SSL (per clonare da GitHub e HTTPS)
-RUN apt-get update && apt-get install -y \
-    git \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# 3. Imposta la directory di lavoro
+# Imposta la directory di lavoro all'interno del container.
 WORKDIR /app
 
-# 4. Clona il repository da GitHub
-RUN git clone https://github.com/Xquantum398/pulutoTV_Dizi8.git .
+# Copia il file delle dipendenze.
+# Farlo prima del resto del codice sfrutta la cache di Docker se le dipendenze non cambiano.
+COPY requirements.txt .
 
-# 5. Aggiorna pip e installa le dipendenze senza cache
-RUN pip install --upgrade pip
+# Installa le dipendenze.
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 6. Espone la porta 7860 per HuggingFace Spaces
+# Copia il resto del codice dell'applicazione nella directory di lavoro.
+COPY . .
+
+# Metadata dell'immagine OCI (Open Container Initiative) corretti.
+LABEL org.opencontainers.image.title="HLS Proxy Server"
+LABEL org.opencontainers.image.description="Server proxy universale per stream HLS con supporto Vavoo, DLHD e playlist builder"
+LABEL org.opencontainers.image.version="2.5.0"
+LABEL org.opencontainers.image.source="https://github.com/Xquantum398/pulutoTV_Dizi8"
+
+# Esponi la porta su cui l'applicazione è in ascolto.
 EXPOSE 7860
 
-# 7. Comando per avviare Gunicorn ottimizzato per HuggingFace Spaces
-#    - 2 worker (limite per Spaces gratuiti)
-#    - Worker class sync (più stabile per proxy HTTP)
-#    - Timeout adeguati per streaming
-#    - Logging su stdout/stderr
-CMD ["gunicorn", "app:app", \
-     "-w", "2", \
-     "--worker-class", "sync", \
-     "-b", "0.0.0.0:7860", \
-     "--timeout", "120", \
-     "--keep-alive", "5", \
-     "--max-requests", "500", \
-     "--max-requests-jitter", "50", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "--log-level", "info"]
+# Comando per avviare l'app in produzione con Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:7860", "--workers", "4", "--worker-class", "aiohttp.worker.GunicornWebWorker", "app:app"]
